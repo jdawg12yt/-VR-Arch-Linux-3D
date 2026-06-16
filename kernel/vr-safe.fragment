@@ -1,0 +1,60 @@
+# Conservative VR-oriented kernel fragment
+
+# Keep the kernel broadly compatible and easy to recover from.
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_BLK_DEV_INITRD=y
+
+# Firmware and boot support.
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
+CONFIG_ACPI=y
+CONFIG_PCI=y
+CONFIG_PM=y
+
+# Input and USB devices used by VR headsets and controllers.
+CONFIG_INPUT_EVDEV=y
+CONFIG_INPUT_JOYDEV=y
+CONFIG_HID=y
+CONFIG_HID_GENERIC=y
+CONFIG_USB_SUPPORT=y
+CONFIG_USB=y
+CONFIG_USB_XHCI_HCD=y
+CONFIG_USB_HID=y
+CONFIG_USB_STORAGE=y
+
+# Graphics that favor boot success over aggressive tuning.
+CONFIG_DRM=y
+CONFIG_DRM_KMS_HELPER=y
+CONFIG_DRM_SIMPLEDRM=y
+CONFIG_FB=y
+CONFIG_FRAMEBUFFER_CONSOLE=y
+CONFIG_VT=y
+
+# Audio devices commonly used in VR setups.
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_HDA_INTEL=y
+CONFIG_SND_USB_AUDIO=y
+
+# Storage and filesystems for recovery-friendly installs.
+CONFIG_EXT4_FS=y
+CONFIG_BTRFS_FS=y
+CONFIG_OVERLAY_FS=y
+CONFIG_TMPFS=y
+CONFIG_FUSE_FS=y
+
+# Networking for runtime downloads and remote recovery.
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_IPV6=y
+CONFIG_WIRELESS=y
+CONFIG_CFG80211=y
+CONFIG_MAC80211=y
+
+# Helpful recovery and diagnostics.
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
+CONFIG_MAGIC_SYSRQ=y

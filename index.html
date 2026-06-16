@@ -1,0 +1,1975 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VR Arch Linux 3D</title>
+  <meta name="theme-color" content="#05070b" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05070b;
+      --panel: rgba(11, 17, 27, 0.78);
+      --panel-strong: rgba(15, 24, 39, 0.92);
+      --line: rgba(126, 184, 255, 0.18);
+      --text: #e7eefc;
+      --muted: #91a3c5;
+      --accent: #8dd4ff;
+      --accent-2: #6dffcf;
+      --warn: #ffd27d;
+      --danger: #ff8da1;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top, rgba(51, 110, 170, 0.24), transparent 34%),
+        radial-gradient(circle at 15% 20%, rgba(109, 255, 207, 0.12), transparent 22%),
+        radial-gradient(circle at 85% 15%, rgba(141, 212, 255, 0.14), transparent 20%),
+        linear-gradient(160deg, #03050a 0%, #050912 45%, #020409 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 100% 52px, 52px 100%;
+      opacity: 0.18;
+      mask-image: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.9) 20%, rgba(0, 0, 0, 0.9) 80%, transparent);
+    }
+
+    body::after {
+      background: radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
+    }
+
+    .scene {
+      position: relative;
+      height: 100vh;
+      width: 100vw;
+      padding: 24px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      perspective: 1600px;
+    }
+
+    body.scene-first .scene {
+      grid-template-rows: 1fr;
+      padding: 0;
+      gap: 0;
+    }
+
+    body.scene-first .topbar,
+    body.scene-first .panel,
+    body.scene-first .terminal {
+      display: none;
+    }
+
+    body.scene-first .hud {
+      grid-template-columns: 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    body.scene-first .workspace {
+      border-radius: 0;
+      min-height: 100vh;
+      box-shadow: none;
+    }
+
+    body.scene-first .workspace-hud {
+      inset: 18px;
+    }
+
+    body.scene-first .workspace-hud .lens:last-child {
+      margin-left: auto;
+    }
+
+    body.quest-mode .window {
+      display: none;
+    }
+
+    body.quest-mode .scene-first-hint {
+      backdrop-filter: blur(10px);
+      opacity: 0.92;
+    }
+
+    body.quest-mode .workspace-hud,
+    body.quest-mode .controller-hint,
+    body.quest-mode .scene-first-hint {
+      display: none;
+    }
+
+    body.quest-mode .center-node {
+      width: 180px;
+      height: 180px;
+      box-shadow: 0 0 90px rgba(109, 255, 207, 0.16);
+    }
+
+    body.quest-mode .particle {
+      opacity: 0.45;
+    }
+
+    body.quest-mode .scene-first-hint {
+      max-width: 300px;
+    }
+
+    .radial-menu {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 320px;
+      height: 320px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: auto;
+      display: none;
+      z-index: 3;
+    }
+
+    .radial-menu::before {
+      content: "";
+      position: absolute;
+      inset: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(141, 212, 255, 0.14);
+      background: radial-gradient(circle, rgba(4, 8, 15, 0.4), rgba(4, 8, 15, 0.08));
+      backdrop-filter: blur(14px);
+    }
+
+    .radial-option {
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid rgba(141, 212, 255, 0.18);
+      background: rgba(7, 12, 20, 0.8);
+      color: var(--text);
+      font: inherit;
+      text-align: center;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      z-index: 1;
+    }
+
+    .radial-option span {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .radial-option strong {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .radial-option:hover,
+    .radial-option.active {
+      transform: scale(1.08);
+      border-color: rgba(109, 255, 207, 0.42);
+      background: rgba(11, 17, 27, 0.94);
+    }
+
+    .radial-option.top {
+      left: 50%;
+      top: 4px;
+      transform: translateX(-50%);
+    }
+
+    .radial-option.right {
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .radial-option.bottom {
+      left: 50%;
+      bottom: 4px;
+      transform: translateX(-50%);
+    }
+
+    .radial-option.left {
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    body.scene-first .radial-menu {
+      display: block;
+    }
+
+    .controller-hint {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      max-width: 320px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(4, 8, 15, 0.58);
+      border: 1px solid rgba(141, 212, 255, 0.14);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      z-index: 3;
+    }
+
+    body:not(.scene-first) .controller-hint {
+      display: none;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .orb {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 24px rgba(141, 212, 255, 0.65);
+    }
+
+    .title {
+      font-size: 18px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(9, 15, 25, 0.7);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .status-pill strong {
+      color: var(--text);
+    }
+
+    .status-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 18px rgba(109, 255, 207, 0.9);
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 360px 1fr 330px;
+      gap: 18px;
+      min-height: 0;
+    }
+
+    .panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 24, 39, 0.88), rgba(7, 12, 20, 0.74));
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(141, 212, 255, 0.12), transparent 30%, transparent 70%, rgba(109, 255, 207, 0.1));
+      opacity: 0.7;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(141, 212, 255, 0.22);
+      color: var(--accent);
+      background: rgba(141, 212, 255, 0.08);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .boot-log {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(4, 7, 12, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      min-height: 210px;
+      overflow: auto;
+      font-family: "Consolas", "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .log-line {
+      color: var(--muted);
+    }
+
+    .log-line strong {
+      color: var(--accent-2);
+    }
+
+    .progress-wrap {
+      display: grid;
+      gap: 8px;
+    }
+
+    .progress-track {
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 18px rgba(109, 255, 207, 0.38);
+      transition: width 320ms ease;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(3, 8, 15, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .stat strong {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .workspace {
+      position: relative;
+      border-radius: 28px;
+      border: 1px solid rgba(141, 212, 255, 0.22);
+      background:
+        radial-gradient(circle at center, rgba(141, 212, 255, 0.12), transparent 45%),
+        linear-gradient(160deg, rgba(9, 16, 27, 0.92), rgba(4, 7, 12, 0.82));
+      overflow: hidden;
+      box-shadow: inset 0 0 100px rgba(141, 212, 255, 0.06), var(--shadow);
+      min-height: 0;
+    }
+
+    #sceneCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+
+    .workspace::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: none;
+    }
+
+    .workspace-hud {
+      position: absolute;
+      inset: 18px 18px auto 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 2;
+    }
+
+    .scene-toggle {
+      border: 1px solid rgba(141, 212, 255, 0.2);
+      background: rgba(4, 8, 15, 0.78);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      backdrop-filter: blur(18px);
+    }
+
+    .scene-toggle:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .lens {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(4, 8, 15, 0.68);
+      border: 1px solid rgba(141, 212, 255, 0.16);
+      color: var(--muted);
+      font-size: 12px;
+      backdrop-filter: blur(18px);
+    }
+
+    .lens strong {
+      color: var(--text);
+    }
+
+    .floaters {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+    }
+
+    .window {
+      position: absolute;
+      width: 260px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(11, 17, 27, 0.72);
+      border: 1px solid rgba(141, 212, 255, 0.16);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(16px);
+      animation: drift 9s ease-in-out infinite alternate;
+      will-change: transform;
+    }
+
+    .window h3 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .window p {
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .window code {
+      color: var(--accent-2);
+      font-family: "Consolas", "Liberation Mono", monospace;
+    }
+
+    .window.one {
+      top: 18%;
+      left: 8%;
+      transform: rotateY(16deg) rotateX(10deg) translateZ(36px);
+    }
+
+    .window.two {
+      top: 55%;
+      left: 18%;
+      width: 290px;
+      transform: rotateY(-12deg) rotateX(8deg) translateZ(48px);
+      animation-delay: 900ms;
+    }
+
+    .window.three {
+      top: 24%;
+      right: 10%;
+      width: 240px;
+      transform: rotateY(-18deg) rotateX(6deg) translateZ(28px);
+      animation-delay: 1.8s;
+    }
+
+    .center-node {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 220px;
+      height: 220px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(109, 255, 207, 0.35), rgba(11, 17, 27, 0.2) 42%, rgba(0, 0, 0, 0) 70%);
+      box-shadow: 0 0 120px rgba(109, 255, 207, 0.18);
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    .center-node::before,
+    .center-node::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(141, 212, 255, 0.2);
+    }
+
+    .center-node::before {
+      transform: scale(1.18);
+    }
+
+    .center-node::after {
+      transform: scale(1.45);
+      opacity: 0.45;
+    }
+
+    .dock {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .dock button {
+      appearance: none;
+      border: 1px solid rgba(141, 212, 255, 0.16);
+      background: rgba(7, 12, 20, 0.82);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .dock button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(141, 212, 255, 0.38);
+      background: rgba(12, 20, 31, 0.96);
+    }
+
+    .dock button.active {
+      color: var(--accent-2);
+      box-shadow: 0 0 0 1px rgba(109, 255, 207, 0.3) inset;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(4, 8, 13, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+
+    .list-item small {
+      color: var(--muted);
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pill.ok {
+      background: rgba(109, 255, 207, 0.12);
+      color: var(--accent-2);
+    }
+
+    .pill.warn {
+      background: rgba(255, 210, 125, 0.12);
+      color: var(--warn);
+    }
+
+    .pill.off {
+      background: rgba(255, 141, 161, 0.12);
+      color: var(--danger);
+    }
+
+    .terminal {
+      padding: 14px 16px;
+      border-radius: 24px;
+      border: 1px solid rgba(141, 212, 255, 0.18);
+      background: rgba(5, 8, 13, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .terminal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .terminal-body {
+      display: grid;
+      gap: 10px;
+      font-family: "Consolas", "Liberation Mono", monospace;
+    }
+
+    .terminal-output {
+      min-height: 86px;
+      max-height: 140px;
+      overflow: auto;
+      display: grid;
+      gap: 6px;
+      color: #cde1ff;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .terminal-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .terminal-row span {
+      color: var(--accent-2);
+    }
+
+    .terminal-row input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .terminal-row input::placeholder {
+      color: #6c7d9f;
+    }
+
+    .terminal-row button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #07101a;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .floating-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(141, 212, 255, 0.4);
+      filter: blur(1px);
+      animation: floatUp linear infinite;
+      will-change: transform, opacity;
+    }
+
+    .xr-ready {
+      color: var(--accent-2);
+    }
+
+    .boot-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .scene-first-hint {
+      max-width: 360px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(4, 8, 15, 0.6);
+      border: 1px solid rgba(141, 212, 255, 0.14);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    @keyframes drift {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(0, -14px, 18px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.82; }
+      50% { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+    }
+
+    @keyframes floatUp {
+      from { transform: translateY(120vh) scale(0.8); opacity: 0; }
+      10% { opacity: 0.8; }
+      to { transform: translateY(-20vh) scale(1.15); opacity: 0; }
+    }
+
+    @media (max-width: 1200px) {
+      body {
+        overflow: auto;
+      }
+
+      .scene {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .hud {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace {
+        min-height: 540px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .scene {
+        padding: 14px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .workspace-hud {
+        flex-direction: column;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .window {
+        width: min(88vw, 280px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="scene">
+    <header class="topbar">
+      <div class="brand">
+        <div class="orb"></div>
+        <div>
+          <h1 class="title">VR Arch Linux 3D</h1>
+          <p class="subtitle">A rolling-release shell for immersive computing</p>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="dot"></span>
+        <span>kernel</span>
+        <strong id="kernelLabel">vrx-rolling</strong>
+        <span>state</span>
+        <strong id="stateLabel">booting</strong>
+        <span>xr</span>
+        <strong id="xrLabel" class="xr-ready">checking</strong>
+      </div>
+    </header>
+
+    <section class="hud">
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>Boot Stream</h2>
+          <span class="badge" id="bootBadge">initramfs</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-track"><div class="progress-bar" id="bootProgress"></div></div>
+          <div class="stats-grid">
+            <div class="stat">
+              <span>Release</span>
+              <strong id="releaseLabel">2026.06</strong>
+            </div>
+            <div class="stat">
+              <span>Latency</span>
+              <strong id="latencyLabel">18 ms</strong>
+            </div>
+            <div class="stat">
+              <span>Packages</span>
+              <strong id="packageCount">48</strong>
+            </div>
+            <div class="stat">
+              <span>Spaces</span>
+              <strong id="spaceCount">3</strong>
+            </div>
+          </div>
+        </div>
+        <div class="boot-log" id="bootLog"></div>
+      </aside>
+
+      <section class="workspace">
+        <div class="workspace-hud">
+          <div class="lens"><strong id="spaceName">Aurora Deck</strong> <span>vr workspace</span></div>
+          <button class="scene-toggle" id="xrLaunchButton" type="button">Enter XR</button>
+          <div class="lens"><span>mode</span> <strong id="modeLabel">standing</strong></div>
+        </div>
+
+        <canvas id="sceneCanvas"></canvas>
+        <div class="center-node"></div>
+        <div class="floaters">
+          <article class="window one">
+            <h3>Pacman</h3>
+            <p><code>mesa-vr</code>, <code>xr-runtime</code>, and <code>webxr-tools</code> are aligned with the current rolling snapshot.</p>
+            <p id="packageSummary">0 pending sync operations.</p>
+          </article>
+          <article class="window two">
+            <h3>Systemd Mesh</h3>
+            <p>xr compositor, audio bridge, and guardian loop are distributed across the immersive shell.</p>
+            <p id="serviceSummary">Services stable, no active failures.</p>
+          </article>
+          <article class="window three">
+            <h3>Session Map</h3>
+            <p>Use the dock to jump between workstation, monitor wall, and passthrough modes.</p>
+            <p id="sessionSummary">Current lane: <code id="laneLabel">workstation</code>.</p>
+          </article>
+        </div>
+
+        <div class="floating-particles" id="particles"></div>
+
+        <div class="radial-menu" id="radialMenu" aria-label="VR quick actions">
+          <button class="radial-option top active" data-radial="spaces"><strong>Spaces</strong><span>next</span></button>
+          <button class="radial-option right" data-radial="passthrough"><strong>Pass</strong><span>toggle</span></button>
+          <button class="radial-option bottom" data-radial="xr"><strong>XR</strong><span>launch</span></button>
+          <button class="radial-option left" data-radial="recenter"><strong>Center</strong><span>reset</span></button>
+        </div>
+
+        <div class="scene-first-hint" id="sceneHint">
+          Boot lands directly in the 3D scene. On Quest-style browsers, tap Enter XR once to switch from the flat scene into immersive mode.
+        </div>
+
+        <div class="controller-hint" id="controllerHint">
+          Controller shortcuts: trigger selects the next space, squeeze goes back, and the A/B buttons toggle passthrough and the scene mode.
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>Control Dock</h2>
+          <span class="badge">manual</span>
+        </div>
+        <div class="dock">
+          <button data-action="boot">Boot</button>
+          <button data-action="update">Sync</button>
+          <button data-action="vr">Launch VR</button>
+          <button data-action="passthrough">Passthrough</button>
+          <button data-action="reboot">Reboot</button>
+        </div>
+
+        <p class="boot-hint">For headset booting, serve this page from a secure origin and open it in the headset browser, then press Launch VR.</p>
+
+        <div>
+          <h2>Services</h2>
+          <div class="list" id="serviceList"></div>
+        </div>
+
+        <div>
+          <h2>Installed Packages</h2>
+          <div class="list" id="packageList"></div>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="terminal">
+      <div class="terminal-head">
+        <span>shell / vrx</span>
+        <span>commands: help, status, update, install &lt;pkg&gt;, vr, passthrough, spaces, reboot</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-output" id="terminalOutput"></div>
+        <div class="terminal-row">
+          <span>arch@vrx</span>
+          <input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="type a command and press enter" />
+          <button id="terminalRun">Run</button>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    const state = {
+      booting: true,
+      progress: 0,
+      vrMode: false,
+      passthrough: false,
+      laneIndex: 0,
+      spaces: ["Aurora Deck", "Signal Hall", "Passthrough Bridge"],
+      services: [
+        { name: "xrvd.service", status: "active", note: "XR compositor online" },
+        { name: "pulse-bridge.service", status: "active", note: "Spatial audio synced" },
+        { name: "network-warp.service", status: "active", note: "Rolling mirrors reachable" },
+        { name: "guardian.service", status: "idle", note: "Headset safety loop ready" }
+      ],
+      packages: [
+        { name: "base-system", version: "2026.06", status: "installed" },
+        { name: "mesa-vr", version: "24.2", status: "installed" },
+        { name: "xr-runtime", version: "1.1", status: "installed" },
+        { name: "webxr-tools", version: "2.0", status: "sync" },
+        { name: "wlroots-xr", version: "0.18", status: "installed" }
+      ],
+      bootLines: [],
+      terminalLines: [],
+      bootTimers: [],
+      xrSupported: false,
+      xrSession: null,
+      xrRunRequested: false
+    };
+
+    const bootLog = document.getElementById("bootLog");
+    const bootProgress = document.getElementById("bootProgress");
+    const stateLabel = document.getElementById("stateLabel");
+    const bootBadge = document.getElementById("bootBadge");
+    const packageList = document.getElementById("packageList");
+    const serviceList = document.getElementById("serviceList");
+    const terminalOutput = document.getElementById("terminalOutput");
+    const terminalInput = document.getElementById("terminalInput");
+    const kernelLabel = document.getElementById("kernelLabel");
+    const modeLabel = document.getElementById("modeLabel");
+    const spaceName = document.getElementById("spaceName");
+    const laneLabel = document.getElementById("laneLabel");
+    const packageSummary = document.getElementById("packageSummary");
+    const serviceSummary = document.getElementById("serviceSummary");
+    const packageCount = document.getElementById("packageCount");
+    const spaceCount = document.getElementById("spaceCount");
+    const releaseLabel = document.getElementById("releaseLabel");
+    const latencyLabel = document.getElementById("latencyLabel");
+    const xrLabel = document.getElementById("xrLabel");
+    const xrLaunchButton = document.getElementById("xrLaunchButton");
+    const sceneHint = document.getElementById("sceneHint");
+    const controllerHint = document.getElementById("controllerHint");
+    const radialMenu = document.getElementById("radialMenu");
+    const sceneCanvas = document.getElementById("sceneCanvas");
+    const particles = document.getElementById("particles");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const isNarrowScreen = () => window.matchMedia("(max-width: 1200px)").matches;
+    const questRuntime = /Quest|Quest 2|Quest 3|Meta Quest|VR headset/i.test(`${navigator.userAgent} ${navigator.platform}`);
+    const sceneModeKey = "vr-os-scene-first";
+
+    const gl = sceneCanvas.getContext("webgl", { alpha: false, antialias: true, xrCompatible: true });
+
+    if (!gl) {
+      throw new Error("WebGL is required for the 3D scene");
+    }
+
+    const vertexSource = `
+      attribute vec3 position;
+      attribute vec3 color;
+      uniform mat4 uProjection;
+      uniform mat4 uView;
+      uniform mat4 uModel;
+      varying vec3 vColor;
+      void main() {
+        vColor = color;
+        gl_Position = uProjection * uView * uModel * vec4(position, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      varying vec3 vColor;
+      void main() {
+        gl_FragColor = vec4(vColor, 1.0);
+      }
+    `;
+
+    function compileShader(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader) || "Shader compile failed");
+      }
+      return shader;
+    }
+
+    function createProgram(vertex, fragment) {
+      const program = gl.createProgram();
+      gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertex));
+      gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragment));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program) || "Program link failed");
+      }
+      return program;
+    }
+
+    const program = createProgram(vertexSource, fragmentSource);
+    gl.useProgram(program);
+
+    const uniforms = {
+      projection: gl.getUniformLocation(program, "uProjection"),
+      view: gl.getUniformLocation(program, "uView"),
+      model: gl.getUniformLocation(program, "uModel")
+    };
+
+    const attributes = {
+      position: gl.getAttribLocation(program, "position"),
+      color: gl.getAttribLocation(program, "color")
+    };
+
+    function createBuffer(data) {
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+      return buffer;
+    }
+
+    function createSceneGeometry() {
+      const cubePositions = [
+        -1, -1, 1, 1, -1, 1, 1, 1, 1,
+        -1, -1, 1, 1, 1, 1, -1, 1, 1,
+        -1, -1, -1, -1, 1, -1, 1, 1, -1,
+        -1, -1, -1, 1, 1, -1, 1, -1, -1,
+        -1, 1, -1, -1, 1, 1, 1, 1, 1,
+        -1, 1, -1, 1, 1, 1, 1, 1, -1,
+        -1, -1, -1, 1, -1, -1, 1, -1, 1,
+        -1, -1, -1, 1, -1, 1, -1, -1, 1,
+        1, -1, -1, 1, 1, -1, 1, 1, 1,
+        1, -1, -1, 1, 1, 1, 1, -1, 1,
+        -1, -1, -1, -1, -1, 1, -1, 1, 1,
+        -1, -1, -1, -1, 1, 1, -1, 1, -1
+      ];
+
+      const cubeColors = [];
+      for (let face = 0; face < 6; face += 1) {
+        const hue = [0.30, 0.48, 0.58, 0.68, 0.78, 0.88][face];
+        const color = face < 3 ? [0.24, 0.70, 0.95] : [0.42, 0.98, 0.82];
+        for (let index = 0; index < 6; index += 1) {
+          cubeColors.push(color[0], color[1], color[2]);
+        }
+      }
+
+      const gridPositions = [];
+      const gridColors = [];
+      for (let axis = -8; axis <= 8; axis += 1) {
+        gridPositions.push(-8, 0, axis, 8, 0, axis);
+        gridPositions.push(axis, 0, -8, axis, 0, 8);
+        for (let index = 0; index < 4; index += 1) {
+          gridColors.push(0.15, 0.25, 0.35);
+        }
+      }
+
+      return {
+        cube: {
+          positions: createBuffer(cubePositions),
+          colors: createBuffer(cubeColors),
+          count: cubePositions.length / 3,
+          mode: gl.TRIANGLES
+        },
+        grid: {
+          positions: createBuffer(gridPositions),
+          colors: createBuffer(gridColors),
+          count: gridPositions.length / 3,
+          mode: gl.LINES
+        }
+      };
+    }
+
+    const geometry = createSceneGeometry();
+
+    function createMat4() {
+      return new Float32Array(16);
+    }
+
+    function mat4Identity(out) {
+      out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0;
+      out[4] = 0; out[5] = 1; out[6] = 0; out[7] = 0;
+      out[8] = 0; out[9] = 0; out[10] = 1; out[11] = 0;
+      out[12] = 0; out[13] = 0; out[14] = 0; out[15] = 1;
+      return out;
+    }
+
+    function mat4Perspective(out, fovy, aspect, near, far) {
+      const f = 1 / Math.tan(fovy / 2);
+      out[0] = f / aspect;
+      out[1] = 0;
+      out[2] = 0;
+      out[3] = 0;
+      out[4] = 0;
+      out[5] = f;
+      out[6] = 0;
+      out[7] = 0;
+      out[8] = 0;
+      out[9] = 0;
+      out[10] = (far + near) / (near - far);
+      out[11] = -1;
+      out[12] = 0;
+      out[13] = 0;
+      out[14] = (2 * far * near) / (near - far);
+      out[15] = 0;
+      return out;
+    }
+
+    function mat4Multiply(out, a, b) {
+      const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+      const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+      const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+      const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+      const b00 = b[0], b01 = b[1], b02 = b[2], b03 = b[3];
+      const b10 = b[4], b11 = b[5], b12 = b[6], b13 = b[7];
+      const b20 = b[8], b21 = b[9], b22 = b[10], b23 = b[11];
+      const b30 = b[12], b31 = b[13], b32 = b[14], b33 = b[15];
+
+      out[0] = b00 * a00 + b01 * a10 + b02 * a20 + b03 * a30;
+      out[1] = b00 * a01 + b01 * a11 + b02 * a21 + b03 * a31;
+      out[2] = b00 * a02 + b01 * a12 + b02 * a22 + b03 * a32;
+      out[3] = b00 * a03 + b01 * a13 + b02 * a23 + b03 * a33;
+      out[4] = b10 * a00 + b11 * a10 + b12 * a20 + b13 * a30;
+      out[5] = b10 * a01 + b11 * a11 + b12 * a21 + b13 * a31;
+      out[6] = b10 * a02 + b11 * a12 + b12 * a22 + b13 * a32;
+      out[7] = b10 * a03 + b11 * a13 + b12 * a23 + b13 * a33;
+      out[8] = b20 * a00 + b21 * a10 + b22 * a20 + b23 * a30;
+      out[9] = b20 * a01 + b21 * a11 + b22 * a21 + b23 * a31;
+      out[10] = b20 * a02 + b21 * a12 + b22 * a22 + b23 * a32;
+      out[11] = b20 * a03 + b21 * a13 + b22 * a23 + b23 * a33;
+      out[12] = b30 * a00 + b31 * a10 + b32 * a20 + b33 * a30;
+      out[13] = b30 * a01 + b31 * a11 + b32 * a21 + b33 * a31;
+      out[14] = b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32;
+      out[15] = b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33;
+      return out;
+    }
+
+    function mat4Translate(out, a, x, y, z) {
+      if (a !== out) {
+        out.set(a);
+      }
+      out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+      out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+      out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+      out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+      return out;
+    }
+
+    function mat4RotateY(out, a, angle) {
+      const s = Math.sin(angle);
+      const c = Math.cos(angle);
+      out[0] = a[0] * c + a[8] * s;
+      out[1] = a[1] * c + a[9] * s;
+      out[2] = a[2] * c + a[10] * s;
+      out[3] = a[3] * c + a[11] * s;
+      out[8] = a[8] * c - a[0] * s;
+      out[9] = a[9] * c - a[1] * s;
+      out[10] = a[10] * c - a[2] * s;
+      out[11] = a[11] * c - a[3] * s;
+      out[4] = a[4];
+      out[5] = a[5];
+      out[6] = a[6];
+      out[7] = a[7];
+      out[12] = a[12];
+      out[13] = a[13];
+      out[14] = a[14];
+      out[15] = a[15];
+      return out;
+    }
+
+    function mat4RotateX(out, a, angle) {
+      const s = Math.sin(angle);
+      const c = Math.cos(angle);
+      out[4] = a[4] * c + a[8] * s;
+      out[5] = a[5] * c + a[9] * s;
+      out[6] = a[6] * c + a[10] * s;
+      out[7] = a[7] * c + a[11] * s;
+      out[8] = a[8] * c - a[4] * s;
+      out[9] = a[9] * c - a[5] * s;
+      out[10] = a[10] * c - a[6] * s;
+      out[11] = a[11] * c - a[7] * s;
+      out[0] = a[0];
+      out[1] = a[1];
+      out[2] = a[2];
+      out[3] = a[3];
+      out[12] = a[12];
+      out[13] = a[13];
+      out[14] = a[14];
+      out[15] = a[15];
+      return out;
+    }
+
+    function mat4LookAt(out, eye, center, up) {
+      let x0; let x1; let x2; let y0; let y1; let y2; let z0; let z1; let z2; let len;
+      z0 = eye[0] - center[0];
+      z1 = eye[1] - center[1];
+      z2 = eye[2] - center[2];
+      len = Math.hypot(z0, z1, z2);
+      if (len === 0) {
+        z2 = 1;
+      } else {
+        z0 /= len;
+        z1 /= len;
+        z2 /= len;
+      }
+      x0 = up[1] * z2 - up[2] * z1;
+      x1 = up[2] * z0 - up[0] * z2;
+      x2 = up[0] * z1 - up[1] * z0;
+      len = Math.hypot(x0, x1, x2);
+      if (len === 0) {
+        x0 = 0;
+        x1 = 0;
+        x2 = 0;
+      } else {
+        x0 /= len;
+        x1 /= len;
+        x2 /= len;
+      }
+      y0 = z1 * x2 - z2 * x1;
+      y1 = z2 * x0 - z0 * x2;
+      y2 = z0 * x1 - z1 * x0;
+
+      out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+      out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+      out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+      out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+      out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+      out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+      out[15] = 1;
+      return out;
+    }
+
+    function resizeCanvas() {
+      const width = Math.max(1, Math.floor(sceneCanvas.clientWidth * window.devicePixelRatio));
+      const height = Math.max(1, Math.floor(sceneCanvas.clientHeight * window.devicePixelRatio));
+      if (sceneCanvas.width !== width || sceneCanvas.height !== height) {
+        sceneCanvas.width = width;
+        sceneCanvas.height = height;
+      }
+      gl.viewport(0, 0, sceneCanvas.width, sceneCanvas.height);
+    }
+
+    function setSceneFirst(enabled) {
+      document.body.classList.toggle("scene-first", enabled);
+      xrLaunchButton.textContent = "Launch XR";
+      sceneHint.style.display = enabled ? "block" : "none";
+      controllerHint.style.display = enabled ? "block" : "none";
+      radialMenu.style.display = enabled ? "block" : "none";
+      localStorage.setItem(sceneModeKey, enabled ? "1" : "0");
+    }
+
+    function setQuestMode(enabled) {
+      document.body.classList.toggle("quest-mode", enabled);
+      if (enabled) {
+        controllerHint.textContent = "Controller shortcuts: trigger advances the radial menu, squeeze moves back, and A/B actions map to the selected option.";
+      }
+    }
+
+    function drawScene(viewMatrix, projectionMatrix, timeSeconds, viewport) {
+      if (viewport) {
+        gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      }
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, geometry.grid.positions);
+      gl.enableVertexAttribArray(attributes.position);
+      gl.vertexAttribPointer(attributes.position, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, geometry.grid.colors);
+      gl.enableVertexAttribArray(attributes.color);
+      gl.vertexAttribPointer(attributes.color, 3, gl.FLOAT, false, 0, 0);
+
+      const identity = createMat4();
+      mat4Identity(identity);
+      gl.uniformMatrix4fv(uniforms.projection, false, projectionMatrix);
+      gl.uniformMatrix4fv(uniforms.view, false, viewMatrix);
+      gl.uniformMatrix4fv(uniforms.model, false, identity);
+      gl.drawArrays(geometry.grid.mode, 0, geometry.grid.count);
+
+      const cubePositions = [
+        [0, 0.9, -2.8, 0.0, 1.0],
+        [-2.4, 0.6, -4.5, 0.6, 0.7],
+        [2.2, 0.7, -3.6, -0.4, 0.9],
+        [0.0, 1.9, -6.2, 0.3, 0.5]
+      ];
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, geometry.cube.positions);
+      gl.vertexAttribPointer(attributes.position, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, geometry.cube.colors);
+      gl.vertexAttribPointer(attributes.color, 3, gl.FLOAT, false, 0, 0);
+
+      cubePositions.forEach(([x, y, z, spin, scale], index) => {
+        const model = createMat4();
+        mat4Identity(model);
+        mat4Translate(model, model, x, y, z);
+        mat4RotateY(model, model, timeSeconds * (0.4 + spin + index * 0.05));
+        mat4RotateX(model, model, timeSeconds * 0.3 + index * 0.12);
+        model[0] *= scale;
+        model[5] *= scale;
+        model[10] *= scale;
+        gl.uniformMatrix4fv(uniforms.model, false, model);
+        gl.drawArrays(geometry.cube.mode, 0, geometry.cube.count);
+      });
+    }
+
+    const renderState = {
+      desktopFrame: 0,
+      xrSession: null,
+      xrReferenceSpace: null,
+      xrLayer: null,
+      xrUpdateControllers: null,
+      xrFrameRequested: false
+    };
+
+    function renderDesktopScene(now) {
+      if (renderState.xrSession) {
+        return;
+      }
+
+      resizeCanvas();
+      gl.clearColor(0.02, 0.04, 0.07, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      const projection = createMat4();
+      const view = createMat4();
+      mat4Perspective(projection, Math.PI / 3, sceneCanvas.width / sceneCanvas.height, 0.1, 100.0);
+      mat4LookAt(view, [Math.sin(now * 0.0003) * 3.5, 1.7, 5.5], [0, 1.1, -3], [0, 1, 0]);
+      drawScene(view, projection, now / 1000);
+      renderState.desktopFrame = window.requestAnimationFrame(renderDesktopScene);
+    }
+
+function renderXRFrame(time, frame) {
+      const session = renderState.xrSession;
+      if (!session) {
+        return;
+      }
+
+      if (typeof renderState.xrUpdateControllers === "function") {
+        renderState.xrUpdateControllers();
+      }
+
+      const pose = frame.getViewerPose(renderState.xrReferenceSpace);
+      if (!pose) {
+        session.requestAnimationFrame(renderXRFrame);
+        return;
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, renderState.xrLayer.framebuffer);
+      gl.clearColor(0.02, 0.04, 0.07, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // Reuse arrays to avoid per-frame allocations (important on Quest-class CPUs)
+      const timeSeconds = time / 1000;
+      for (let i = 0; i < pose.views.length; i++) {
+        const view = pose.views[i];
+        const viewport = renderState.xrLayer.getViewport(view);
+
+        if (!renderState._viewMatrix) {
+          renderState._viewMatrix = new Float32Array(16);
+        }
+        if (!renderState._projectionMatrix) {
+          renderState._projectionMatrix = new Float32Array(16);
+        }
+
+        renderState._viewMatrix.set(view.transform.inverse.matrix);
+        renderState._projectionMatrix.set(view.projectionMatrix);
+
+        drawScene(renderState._viewMatrix, renderState._projectionMatrix, timeSeconds, viewport);
+      }
+
+      session.requestAnimationFrame(renderXRFrame);
+    }
+
+    function clearBootTimers() {
+      while (state.bootTimers.length) {
+        clearTimeout(state.bootTimers.pop());
+      }
+    }
+
+    function addBootLine(text, emphasis = false) {
+      state.bootLines.push({ text, emphasis });
+      if (state.bootLines.length > 14) {
+        state.bootLines.shift();
+      }
+
+      bootLog.innerHTML = state.bootLines
+        .map((entry) => `<div class="log-line${entry.emphasis ? " emphasis" : ""}">${entry.emphasis ? "<strong>" : ""}${entry.text}${entry.emphasis ? "</strong>" : ""}</div>`)
+        .join("");
+      bootLog.scrollTop = bootLog.scrollHeight;
+    }
+
+    function addTerminalLine(text) {
+      state.terminalLines.push(text);
+      if (state.terminalLines.length > 12) {
+        state.terminalLines.shift();
+      }
+      terminalOutput.innerHTML = state.terminalLines.map((line) => `<div>${line}</div>`).join("");
+      terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+
+    function renderServices() {
+      serviceList.innerHTML = state.services
+        .map((service) => {
+          const pillClass = service.status === "active" ? "ok" : service.status === "idle" ? "warn" : "off";
+          return `
+            <div class="list-item">
+              <div>
+                <div>${service.name}</div>
+                <small>${service.note}</small>
+              </div>
+              <span class="pill ${pillClass}">${service.status}</span>
+            </div>`;
+        })
+        .join("");
+
+      const activeCount = state.services.filter((service) => service.status === "active").length;
+      serviceSummary.textContent = `${activeCount} active services, ${state.services.length - activeCount} in standby.`;
+    }
+
+    function renderPackages() {
+      packageList.innerHTML = state.packages
+        .map((pkg) => {
+          const pillClass = pkg.status === "installed" ? "ok" : pkg.status === "sync" ? "warn" : "off";
+          return `
+            <div class="list-item">
+              <div>
+                <div>${pkg.name}</div>
+                <small>version ${pkg.version}</small>
+              </div>
+              <span class="pill ${pillClass}">${pkg.status}</span>
+            </div>`;
+        })
+        .join("");
+
+      const pending = state.packages.filter((pkg) => pkg.status !== "installed").length;
+      packageSummary.textContent = pending === 0 ? "All packages are synced to the latest rolling snapshot." : `${pending} package(s) waiting on sync.`;
+      packageCount.textContent = String(state.packages.length);
+    }
+
+    function renderMeta() {
+      bootProgress.style.width = `${state.progress}%`;
+      stateLabel.textContent = state.booting ? "booting" : state.vrMode ? "vr active" : "ready";
+      bootBadge.textContent = state.booting ? "initramfs" : "userland";
+      kernelLabel.textContent = state.vrMode ? "vrx-rolling" : "vrx-stable";
+      modeLabel.textContent = state.passthrough ? "passthrough" : state.vrMode ? "immersive" : "standing";
+      xrLabel.textContent = state.xrSupported ? (state.xrSession ? "session" : "ready") : "unavailable";
+      spaceName.textContent = state.spaces[state.laneIndex];
+      laneLabel.textContent = state.spaces[state.laneIndex].toLowerCase();
+      releaseLabel.textContent = `2026.0${state.vrMode ? 7 : 6}`;
+      latencyLabel.textContent = `${state.vrMode ? 11 : 18} ms`;
+      spaceCount.textContent = String(state.spaces.length);
+    }
+
+    async function detectXR() {
+      if (!navigator.xr) {
+        state.xrSupported = false;
+        renderMeta();
+        xrLaunchButton.disabled = true;
+        xrLaunchButton.textContent = "XR unavailable";
+        return;
+      }
+
+      try {
+        state.xrSupported = await navigator.xr.isSessionSupported("immersive-vr");
+      } catch (error) {
+        state.xrSupported = false;
+      }
+
+      renderMeta();
+      xrLaunchButton.disabled = false;
+    }
+
+    async function bootIntoXR() {
+      if (!navigator.xr) {
+        addTerminalLine("webxr unavailable in this browser");
+        return;
+      }
+
+      if (state.xrSession) {
+        addTerminalLine("xr session already active");
+        return;
+      }
+
+      try {
+        await gl.makeXRCompatible();
+        let session = null;
+
+        for (const options of [
+          { mode: "immersive-vr", init: { optionalFeatures: ["local-floor"] } },
+          { mode: "immersive-vr", init: { optionalFeatures: [] } }
+        ]) {
+          try {
+            session = await navigator.xr.requestSession(options.mode, options.init);
+            break;
+          } catch (error) {
+            session = null;
+          }
+        }
+
+        if (!session) {
+          throw new Error("No compatible WebXR session could be started");
+        }
+
+        state.xrSession = session;
+        state.xrRunRequested = true;
+        state.vrMode = true;
+        state.passthrough = false;
+  renderState.xrSession = session;
+        const radialButtons = Array.from(radialMenu.querySelectorAll("[data-radial]"));
+        let radialIndex = 0;
+        const controllerState = new WeakMap();
+
+        const setRadialSelection = (index) => {
+          radialIndex = (index + radialButtons.length) % radialButtons.length;
+          radialButtons.forEach((button, buttonIndex) => button.classList.toggle("active", buttonIndex === radialIndex));
+        };
+
+        const triggerRadialAction = (action) => {
+          if (action === "spaces") {
+            nextSpace();
+          } else if (action === "passthrough") {
+            setPassthrough();
+          } else if (action === "xr") {
+            bootIntoXR();
+          } else if (action === "recenter") {
+            setSceneFirst(true);
+            renderMeta();
+          }
+        };
+
+        const applyControllerAction = (inputSource) => {
+          const gamepad = inputSource && inputSource.gamepad;
+          if (!gamepad || !gamepad.buttons) {
+            return;
+          }
+
+          const pressed = gamepad.buttons.map((button) => Boolean(button && button.pressed));
+          const previous = controllerState.get(inputSource) || [];
+          const edge = (index) => pressed[index] && !previous[index];
+
+          if (edge(0)) {
+            setRadialSelection(radialIndex + 1);
+          }
+
+          if (edge(1)) {
+            setRadialSelection(radialIndex - 1);
+          }
+
+          if (edge(2)) {
+            triggerRadialAction(radialButtons[radialIndex].dataset.radial);
+          }
+
+          if (edge(3)) {
+            setSceneFirst(!document.body.classList.contains("scene-first"));
+          }
+
+          controllerState.set(inputSource, pressed);
+        };
+
+        const updateControllers = () => {
+          if (!state.xrSession) {
+            return;
+          }
+
+          for (const inputSource of state.xrSession.inputSources) {
+            applyControllerAction(inputSource);
+          }
+        };
+
+        renderState.xrLayer = new XRWebGLLayer(session, gl, { antialias: true, alpha: false });
+        session.updateRenderState({ baseLayer: renderState.xrLayer });
+        renderState.xrReferenceSpace = await session.requestReferenceSpace("local-floor").catch(() => session.requestReferenceSpace("local"));
+        renderState.xrUpdateControllers = updateControllers;
+
+        session.addEventListener("end", () => {
+          state.xrSession = null;
+          state.vrMode = false;
+          renderState.xrSession = null;
+          renderState.xrReferenceSpace = null;
+          renderState.xrLayer = null;
+          renderState.xrUpdateControllers = null;
+          renderMeta();
+          addTerminalLine("xr session ended");
+          cancelAnimationFrame(renderState.desktopFrame);
+          renderState.desktopFrame = requestAnimationFrame(renderDesktopScene);
+        });
+
+        addTerminalLine("immersive-vr session started");
+        renderMeta();
+        xrLaunchButton.textContent = "XR active";
+        renderState.xrSession.requestAnimationFrame(renderXRFrame);
+        setRadialSelection(0);
+      } catch (error) {
+        addTerminalLine("unable to start xr session");
+      }
+    }
+
+    async function endXRSession() {
+      if (!state.xrSession) {
+        return;
+      }
+
+      const session = state.xrSession;
+      state.xrSession = null;
+
+      try {
+        await session.end();
+      } catch (error) {
+        // Ignore shutdown errors; the browser may already be tearing the session down.
+      }
+
+      renderMeta();
+    }
+
+    function syncSceneMode() {
+      const stored = localStorage.getItem(sceneModeKey);
+      const enabled = stored === null ? true : stored === "1";
+      setSceneFirst(enabled || questRuntime);
+      setQuestMode(questRuntime);
+    }
+
+    function nextSpace() {
+      state.laneIndex = (state.laneIndex + 1) % state.spaces.length;
+      renderMeta();
+      addTerminalLine(`switched to ${state.spaces[state.laneIndex]}`);
+    }
+
+    function bootSequence() {
+      clearBootTimers();
+      state.booting = true;
+      state.progress = 0;
+      state.vrMode = false;
+      state.passthrough = false;
+      state.laneIndex = 0;
+      state.terminalLines = [];
+      state.bootLines = [];
+      addTerminalLine("Starting VR Arch Linux 3D...");
+      const steps = [
+        "checking rolling-release mirrors",
+        "mounting base system layers",
+        "loading openxr runtime",
+        "starting compositor mesh",
+        "warming spatial audio bridge",
+        "launching vr shell"
+      ];
+
+      steps.forEach((step, index) => {
+        const timer = setTimeout(() => {
+          state.progress = Math.min(100, (index + 1) * 16);
+          addBootLine(step, index === steps.length - 1);
+          addTerminalLine(step);
+
+          if (index === steps.length - 1) {
+            state.booting = false;
+            state.progress = 100;
+            state.vrMode = true;
+            renderMeta();
+            addBootLine("system ready for immersive sessions", true);
+            addTerminalLine("system ready for immersive sessions");
+          }
+
+          renderMeta();
+        }, 420 * (index + 1));
+
+        state.bootTimers.push(timer);
+      });
+    }
+
+    function updatePackages() {
+      if (reduceMotion.matches) {
+        state.packages = state.packages.filter((pkg) => pkg.status !== "sync");
+      }
+
+      state.packages = state.packages.map((pkg) =>
+        pkg.status === "sync" ? { ...pkg, status: "installed" } : pkg
+      );
+      const newPackage = {
+        name: `vr-addon-${String(Math.floor(Math.random() * 900) + 100)}`,
+        version: "latest",
+        status: "installed"
+      };
+      state.packages.splice(2, 0, newPackage);
+      addTerminalLine(`synchronized mirrors and installed ${newPackage.name}`);
+      addBootLine(`sync complete: ${newPackage.name} added to the snapshot`, true);
+      renderPackages();
+    }
+
+    function installPackage(name) {
+      if (!name) {
+        addTerminalLine("usage: install <pkg>");
+        return;
+      }
+
+      state.packages.push({ name, version: "latest", status: "installed" });
+      addTerminalLine(`installed ${name}`);
+      addBootLine(`package ${name} staged into the rolling release`, true);
+      renderPackages();
+    }
+
+    function setPassthrough(nextValue) {
+      state.passthrough = typeof nextValue === "boolean" ? nextValue : !state.passthrough;
+      state.vrMode = true;
+      addTerminalLine(state.passthrough ? "passthrough enabled" : "passthrough disabled");
+      renderMeta();
+    }
+
+    function runCommand(rawCommand) {
+      const command = rawCommand.trim();
+      if (!command) {
+        return;
+      }
+
+      addTerminalLine(`arch@vrx$ ${command}`);
+      const [name, ...rest] = command.split(/\s+/);
+      const value = rest.join(" ");
+
+      switch (name.toLowerCase()) {
+        case "help":
+          addTerminalLine("commands: help, status, update, install <pkg>, vr, passthrough, spaces, reboot, clear");
+          break;
+        case "status":
+          addTerminalLine(`state=${state.booting ? "booting" : state.vrMode ? "vr" : "ready"}, packages=${state.packages.length}, services=${state.services.length}`);
+          break;
+        case "update":
+          updatePackages();
+          break;
+        case "install":
+          installPackage(value);
+          break;
+        case "vr":
+          bootIntoXR();
+          break;
+        case "passthrough":
+          setPassthrough();
+          break;
+        case "spaces":
+          nextSpace();
+          break;
+        case "reboot":
+          addTerminalLine("rebooting shell...");
+          // Avoid runaway loops if we were in XR; endXRSession schedules desktop resume.
+          endXRSession().finally(() => {
+            cancelAnimationFrame(renderState.desktopFrame);
+            renderState.desktopFrame = requestAnimationFrame(renderDesktopScene);
+            bootSequence();
+          });
+          break;
+        case "clear":
+          state.terminalLines = [];
+          terminalOutput.innerHTML = "";
+          break;
+        default:
+          addTerminalLine(`unknown command: ${name}`);
+      }
+
+      renderMeta();
+      renderPackages();
+      renderServices();
+      terminalInput.value = "";
+      terminalInput.focus();
+    }
+
+    function createParticles() {
+      const count = reduceMotion.matches || isNarrowScreen() ? 8 : questRuntime ? 5 : 18;
+      for (let index = 0; index < count; index += 1) {
+        const particle = document.createElement("div");
+        particle.className = "particle";
+        const size = Math.random() * 8 + 3;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.animationDuration = `${10 + Math.random() * 12}s`;
+        particle.style.animationDelay = `${Math.random() * -20}s`;
+        particle.style.opacity = `${0.2 + Math.random() * 0.8}`;
+        particles.appendChild(particle);
+      }
+    }
+
+    document.querySelectorAll("[data-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.action;
+        document.querySelectorAll("[data-action]").forEach((node) => node.classList.remove("active"));
+        button.classList.add("active");
+
+        if (action === "boot") {
+          bootSequence();
+        }
+
+        if (action === "update") {
+          updatePackages();
+        }
+
+        if (action === "vr") {
+          bootIntoXR();
+        }
+
+        if (action === "passthrough") {
+          setPassthrough();
+        }
+
+        if (action === "reboot") {
+          endXRSession().finally(() => bootSequence());
+        }
+      });
+    });
+
+    document.getElementById("terminalRun").addEventListener("click", () => runCommand(terminalInput.value));
+    terminalInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        runCommand(terminalInput.value);
+      }
+    });
+
+    createParticles();
+    detectXR();
+    syncSceneMode();
+    renderServices();
+    renderPackages();
+    renderMeta();
+    addBootLine("VR Arch Linux 3D initializing...");
+    addBootLine("rolling release snapshot is assembling");
+    bootSequence();
+    renderState.desktopFrame = requestAnimationFrame(renderDesktopScene);
+
+    if (reduceMotion.addEventListener) {
+      reduceMotion.addEventListener("change", () => {
+        document.getElementById("particles").innerHTML = "";
+        createParticles();
+      });
+    }
+
+    if (navigator.serviceWorker) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+
+    xrLaunchButton.addEventListener("click", () => {
+      bootIntoXR();
+    });
+
+    radialMenu.querySelectorAll("[data-radial]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.radial;
+        if (action === "spaces") {
+          nextSpace();
+        } else if (action === "passthrough") {
+          setPassthrough();
+        } else if (action === "xr") {
+          bootIntoXR();
+        } else if (action === "recenter") {
+          setSceneFirst(true);
+        }
+      });
+    });
+
+    // Quest browsers are strict about user gestures triggering WebXR.
+    document.addEventListener("pointerdown", (event) => {
+      // Don’t auto-launch XR if the user tapped interactive elements.
+      if (event.target && typeof event.target.closest === "function" && event.target.closest("button, input, a")) {
+        return;
+      }
+
+      if (document.body.classList.contains("scene-first") && state.xrSupported && !state.xrSession) {
+        // Only allow one-shot launch from an explicit user gesture.
+        bootIntoXR();
+      }
+    }, { once: true, passive: true });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !questRuntime) {
+        setSceneFirst(!document.body.classList.contains("scene-first"));
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (questRuntime) {
+        setQuestMode(true);
+      }
+    }, { passive: true });
+  </script>
+</body>
+</html>

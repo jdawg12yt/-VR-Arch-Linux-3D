@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="/usr/share/vr-os"
+DEFAULT_CONFIG="/etc/default/vr-os"
+HOST="${VR_OS_HOST:-127.0.0.1}"
+PORT="${VR_OS_PORT:-8080}"
+VR_BROWSER_CMD="${VR_BROWSER_CMD:-}"
+SERVER_PID=""
+OPENBOX_PID=""
+BROWSER_PID=""
+
+cleanup() {
+  if [[ -n "$BROWSER_PID" ]]; then
+    kill "$BROWSER_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$OPENBOX_PID" ]]; then
+    kill "$OPENBOX_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$SERVER_PID" ]]; then
+    kill "$SERVER_PID" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup EXIT INT TERM
+
+if [[ -f "$DEFAULT_CONFIG" ]]; then
+  # shellcheck disable=SC1090
+  source "$DEFAULT_CONFIG"
+fi
+
+HOST="${VR_OS_HOST:-$HOST}"
+PORT="${VR_OS_PORT:-$PORT}"
+VR_BROWSER_CMD="${VR_BROWSER_CMD:-$VR_BROWSER_CMD}"
+
+if [[ ! -d "$APP_ROOT" ]]; then
+  echo "Missing VR app payload at $APP_ROOT" >&2
+  exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required to serve the VR shell" >&2
+  exit 1
+fi
+
+(cd "$APP_ROOT" && python3 -m http.server "$PORT" --bind "$HOST" >/tmp/vr-os-http.log 2>&1) &
+SERVER_PID=$!
+
+for _ in 1 2 3 4 5; do
+  if command -v curl >/dev/null 2>&1 && curl -fsS "http://${HOST}:${PORT}/index.html" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if command -v openbox >/dev/null 2>&1; then
+  openbox >/tmp/vr-os-openbox.log 2>&1 &
+  OPENBOX_PID=$!
+fi
+
+if command -v unclutter >/dev/null 2>&1; then
+  unclutter -idle 1 >/tmp/vr-os-unclutter.log 2>&1 &
+fi
+
+start_browser() {
+  local -a browser_command=()
+
+  if [[ -n "$VR_BROWSER_CMD" ]]; then
+    # shellcheck disable=SC2206
+    browser_command=($VR_BROWSER_CMD)
+  else
+    for candidate in chromium chromium-browser google-chrome-stable google-chrome brave-browser firefox firefox-esr; do
+      if command -v "$candidate" >/dev/null 2>&1; then
+        browser_command=("$candidate")
+        break
+      fi
+    done
+  fi
+
+  if [[ ${#browser_command[@]} -eq 0 ]]; then
+    echo "No compatible browser found. Set VR_BROWSER_CMD to override." >&2
+    exit 1
+  fi
+
+  if [[ ${browser_command[0]} == firefox* ]]; then
+    "${browser_command[@]}" --kiosk "http://${HOST}:${PORT}/index.html" >/tmp/vr-os-browser.log 2>&1 &
+  else
+    "${browser_command[@]}" --kiosk --app="http://${HOST}:${PORT}/index.html" --no-first-run --disable-pinch --disable-features=Translate,AutofillServerCommunication >/tmp/vr-os-browser.log 2>&1 &
+  fi
+
+  BROWSER_PID=$!
+}
+
+start_browser
+
+wait "$BROWSER_PID"

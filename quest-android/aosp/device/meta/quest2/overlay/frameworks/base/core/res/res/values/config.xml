@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_supportsMultiWindow">false</bool>
+    <bool name="config_enableFusedLocationHardware">false</bool>
+    <bool name="config_automatic_brightness_available">false</bool>
+</resources>

@@ -1,0 +1,5 @@
+on early-init
+    mkdir /data/vendor/quest2 0771 root root
+
+on boot
+    setprop sys.quest2.port.scaffold 1
